@@ -484,4 +484,270 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         sess.flags["archive_tomorrow"] = True
         await send_text(context, chat.id, "Archivist: 'Some pages rearrange themselves when you aren’t looking.'")
         await asyncio.sleep(0.6)
-        await sh
+        await show_buttons(context, chat.id, "Do you:", [("→ Press them for answers", "arch_press"), ("→ Search the morgue", "goto_morgue"), ("→ Call the number", "a3_call")])
+        return
+    if data == "a3_call":
+        sess.flags["mystery_call"] = True
+        await send_text(context, chat.id, "'Get her out before the siren. They’ll bury the evidence in the flood.' The line dies.")
+        await asyncio.sleep(0.8)
+        await show_buttons(context, chat.id, "Immediate options:", [("→ Morgue", "goto_morgue"), ("→ Flood maps", "goto_flood")])
+        return
+
+    # Morgue sub-choices
+    if data == "goto_morgue":
+        await morgue_sequence(context, sess)
+        return
+    if data == "morg_revive":
+        # dramatic revival attempt
+        await animate_frames(
+            context,
+            chat.id,
+            [
+                "🔁 *You slap cold water across her face.*",
+                "🔁 *Her fingers twitch. The monitor blinks.*",
+                "🔁 *A cough—then silence. She remembers you.*",
+            ],
+            parse=ParseMode.MARKDOWN,
+            beat=1.0,
+        )
+        sess.flags["revived_lila"] = True
+        sess.evidence.append("lila_alive")
+        await send_text(context, chat.id, "Lila: 'You came back.' Her voice is a brittle thing.", delay=0.6)
+        # Branch: if revived, lead to Archivist reveal path
+        await show_buttons(context, chat.id, "Choices:", [("→ Hide her and flee", "morg_hide"), ("→ Confront Archivist with proof", "morg_confront_arch")])
+        return
+    if data == "morg_call":
+        await send_text(context, chat.id, "You shout into the corridor. No one answers, but a guard's radio crackles distant: '—evacuation route B: diverted—'.")
+        sess.evidence.append("guard_radio")
+        await show_buttons(context, chat.id, "Do you:", [("→ Investigate Flood maps", "goto_flood"), ("→ Return quietly", "a3_archivist")])
+        return
+    if data == "morg_photo":
+        sess.evidence.append("lila_photo")
+        await send_text(context, chat.id, "You take a photograph of the tag and the raincoat. It will be evidence if you survive to show it.")
+        await show_buttons(context, chat.id, [("→ Save and continue", "goto_flood"), ("→ Hide and run", "morg_hide")])
+        return
+    if data == "morg_hide":
+        await animate_frames(
+            context,
+            chat.id,
+            ["🕶 *You wrap the coat and slip her into a satchel.*", "🕶 *You feel the weight of futures in the straps.*"],
+            parse=ParseMode.MARKDOWN,
+            beat=1.0,
+        )
+        sess.flags["lila_hidden"] = True
+        await send_text(context, chat.id, "You managed to hide Lila. For now.")
+        # advance
+        sess.act = ACT_4
+        await act4_collapse(context, sess)
+        return
+    if data == "morg_confront_arch":
+        sess.flags["confront_with_lila"] = True
+        await send_text(context, chat.id, "You march to the archives with a living girl folded into your coat. The Archivist freezes when you produce her.")
+        await asyncio.sleep(0.8)
+        await archivist_betrayal_sequence(context, sess)
+        return
+
+    # Flood sub-choices
+    if data == "goto_flood":
+        await flood_cover_sequence(context, sess)
+        return
+    if data == "flood_leak":
+        sess.flags["leaked_maps"] = True
+        await animate_frames(
+            context,
+            chat.id,
+            ["🖨 *You photocopy the maps and distribute them to the web.*", "🖨 *Two accounts take the files and disappear.*"],
+            beat=1.0,
+        )
+        await send_text(context, chat.id, "News picks up the leak. The town trembles. Some names change in public records.")
+        sess.act = ACT_4
+        await act4_collapse(context, sess)
+        return
+    if data == "flood_archive":
+        sess.flags["kept_maps"] = True
+        await send_text(context, chat.id, "You tuck the maps into the archivist's private drawer. The truth remains a private coal.")
+        sess.act = ACT_4
+        await act4_collapse(context, sess)
+        return
+    if data == "flood_burn":
+        sess.flags["burned_maps"] = True
+        await animate_frames(context, chat.id, ["🔥 *You burn the maps.*", "🔥 *The smoke tastes like promises.*"], beat=1.0)
+        await send_text(context, chat.id, "You burned the route that might have saved them. Your hands smell like ash.")
+        sess.act = ACT_4
+        await act4_collapse(context, sess)
+        return
+
+    # Archivist confrontation choices
+    if data == "arch_confront":
+        await send_text(context, chat.id, "You press the Archivist for names. Their face finally breaks.")
+        await animate_frames(
+            context,
+            chat.id,
+            ["Archivist: 'We made deals.'", "Archivist: 'To keep the town, we buried certain truths.'", "Archivist: 'We buried your family first.'"],
+            parse=ParseMode.MARKDOWN,
+            beat=1.0,
+        )
+        sess.flags["arch_betrayal"] = True
+        await show_buttons(context, chat.id, [("→ Expose to public", "arch_expose"), ("→ Record secretly", "arch_record"), ("→ Walk away", "arch_leave")])
+        return
+    if data == "arch_record":
+        sess.flags["arch_recorded"] = True
+        await send_text(context, chat.id, "You secretly record them. The Archivist smiles sadly — they expected it.")
+        await send_text(context, chat.id, "Archivist: 'You always thought proof would heal you.'", delay=0.8)
+        sess.act = ACT_4
+        await act4_collapse(context, sess)
+        return
+    if data == "arch_leave":
+        sess.flags["arch_left"] = True
+        await send_text(context, chat.id, "You turn away. In the silence the town rearranges its chairs.")
+        sess.act = ACT_4
+        await act4_collapse(context, sess)
+        return
+    if data == "arch_expose":
+        sess.flags["arch_exposed"] = True
+        await animate_frames(context, chat.id, ["📣 *You publish the Archivist's confession.*", "📣 *A noise like a century cracking answers loose.*"], beat=1.0)
+        await send_text(context, chat.id, "Profiles in town shift as people learn to remember everything.")
+        sess.act = ACT_4
+        await act4_collapse(context, sess)
+        return
+
+    # Act 4 major route choices
+    if data == "a4_break":
+        sess.flags["route"] = "break"
+        await animate_frames(context, chat.id, ["🕰 *You fold the timeline like wet paper.*", "🕰 *Some names snap free, others stick.*"], parse=ParseMode.MARKDOWN, beat=1.0)
+        # If Lila hidden or revived, give extra context
+        if sess.flags.get("lila_hidden") or sess.flags.get("revived_lila"):
+            await send_text(context, chat.id, "You use Lila's presence as the anchor to pull time open.")
+        sess.act = ACT_5
+        await act5_finale(context, sess)
+        return
+    if data == "a4_burn":
+        sess.flags["route"] = "burn"
+        await animate_frames(context, chat.id, ["🔥 *You step into the heat.*", "🔥 *Ash falls like slow rain.*"], parse=ParseMode.MARKDOWN, beat=1.0)
+        sess.act = ACT_5
+        await act5_finale(context, sess)
+        return
+    if data == "a4_hunt":
+        sess.flags["route"] = "hunt"
+        await animate_frames(context, chat.id, ["🩸 *You hunt your other self across mirrors.*", "🩸 *At each reflection, a name slips.*"], parse=ParseMode.MARKDOWN, beat=1.0)
+        sess.act = ACT_5
+        await act5_finale(context, sess)
+        return
+
+    # Endings
+    if data == "end_save":
+        # Save Lila sequence: if revived or hidden, stronger
+        if sess.flags.get("revived_lila") or sess.flags.get("lila_hidden"):
+            await animate_frames(context, chat.id, ["👧 *You hold Lila as the world frays.*", "👧 *She coughs. The timeline shutters — then chooses mercy.*"], beat=1.0, parse=ParseMode.MARKDOWN)
+            await send_text(context, chat.id, "You saved her. The world forgets you kindly; you become a faded photograph in people's memories.")
+            # positive but lonely ending
+            await context.bot.send_video(chat.id, MEDIA["final_clip"], caption="You leave a mark no one can name.")
+        else:
+            # If Lila not found, bittersweet fail
+            await animate_frames(context, chat.id, ["👧 *You reach for her, hands find only smoke.*", "👧 *There is a name on the lip of the flame.*"], beat=1.0)
+            await send_text(context, chat.id, "You tried. The town keeps its secret. You keep the memory.")
+        await send_text(context, chat.id, "\n[GAME OVER] — *Saved, forgotten, eternal.*", parse=ParseMode.MARKDOWN)
+        sess.act = THE_END
+        return
+    if data == "end_veil":
+        await animate_frames(context, chat.id, ["🪞 *The veil rips.*", "🪞 *Everything remembers.*", "🪞 *A terrible, beautiful quiet follows.*"], beat=1.0, parse=ParseMode.MARKDOWN)
+        await send_text(context, chat.id, "The town wakes to remember every loss. No one sleeps easily again.")
+        await send_text(context, chat.id, "\n[GAME OVER] — *Truth without peace.*", parse=ParseMode.MARKDOWN)
+        sess.act = THE_END
+        return
+    if data == "end_burn":
+        await animate_frames(context, chat.id, ["🔥 *You let it burn.*", "🔥 *Secrets cook until they are bones.*"], beat=1.0, parse=ParseMode.MARKDOWN)
+        await send_text(context, chat.id, "You keep your name. Others will have to answer later.")
+        await send_text(context, chat.id, "\n[GAME OVER] — *Survivor's quiet.*", parse=ParseMode.MARKDOWN)
+        sess.act = THE_END
+        return
+
+    # Archivist sub-choices that may have been presented earlier (aliases)
+    if data == "arch_press":
+        await archivist_betrayal_sequence(context, sess)
+        return
+
+    # Fallback
+    await query.edit_message_text("…the world rearranges its punctuation.")
+
+
+# ----------------------------
+# Commands
+# ----------------------------
+
+
+async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat = update.effective_chat
+    user = update.effective_user
+    sess = Session(chat_id=chat.id, owner_id=user.id)
+    SESSIONS[chat.id] = sess
+    log.info("Session started: chat=%s user=%s", chat.id, user.id)
+    await send_text(context, chat.id, f"Welcome, {user.first_name}.", delay=0.2)
+    await act1_opening(context, sess)
+
+
+async def cmd_state(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat = update.effective_chat
+    sess = SESSIONS.get(chat.id)
+    if not sess:
+        await update.message.reply_text("No active session.")
+        return
+    await update.message.reply_text(json.dumps(sess.__dict__, default=str, indent=2))
+
+
+async def cmd_reset(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat = update.effective_chat
+    SESSIONS.pop(chat.id, None)
+    await update.message.reply_text("Session reset. /start to begin again.")
+
+
+async def cmd_talk(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat = update.effective_chat
+    sess = SESSIONS.get(chat.id)
+    if not sess:
+        await update.message.reply_text("/start first.")
+        return
+    args = context.args or []
+    if len(args) < 2:
+        await update.message.reply_text("Usage: /talk <npc> <message>\nExample: /talk archivist tell me about the maps")
+        return
+    npc = args[0]
+    msg = " ".join(args[1:])
+    await send_typing(context, chat.id, 0.8)
+    reply = await npc_reply(npc.title(), msg, sess)
+    await update.message.reply_text(f"{npc.title()}: {reply}")
+
+
+# ----------------------------
+# Bootstrap
+# ----------------------------
+async def main():
+    token = os.getenv("BOT_TOKEN")
+    if not token:
+        raise SystemExit("Set BOT_TOKEN environment variable and run again.")
+    app = ApplicationBuilder().token(token).build()
+    app.add_handler(CommandHandler("start", cmd_start))
+    app.add_handler(CommandHandler("state", cmd_state))
+    app.add_handler(CommandHandler("reset", cmd_reset))
+    app.add_handler(CommandHandler("talk", cmd_talk))
+    app.add_handler(CallbackQueryHandler(on_button))
+    # Run polling (suitable for free hosts)
+    log.info("Starting The Ashen Veil bot...")
+    await app.initialize()
+    await app.start()
+    try:
+        await app.run_polling(drop_pending_updates=True, close_loop=False)
+    finally:
+        await app.stop()
+        await app.shutdown()
+
+
+if __name__ == "__main__":
+    import asyncio
+
+    try:
+        asyncio.run(main())
+    except (KeyboardInterrupt, SystemExit):
+        print("Exiting...")
+
+
