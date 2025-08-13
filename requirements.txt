@@ -1,6 +1,6 @@
-pip install python-telegram-bot==20.5
-#pip install openai  # If AI-powered NPC dialog is included
-pip install requests
+python-telegram-bot==20.5
+requests
+#openai
 export BOT_TOKEN="YOUR_TELEGRAM_BOT_TOKEN"
 #optional NPC AI
 #export OPENAI_API_KEY="..."
