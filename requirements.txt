@@ -1,5 +1,5 @@
-aiohttp
 python-telegram-bot==20.5
+aiohttp
 requests
 #openai
 export BOT_TOKEN="YOUR_TELEGRAM_BOT_TOKEN"
