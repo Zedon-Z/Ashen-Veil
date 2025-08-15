@@ -21,7 +21,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 # Telegram v20+ imports
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.constants import ParseMode, ChatAction
+from telegram import ParseMode
+from telegram import ChatAction
 from telegram.ext import (
     ApplicationBuilder,
     CallbackQueryHandler,
