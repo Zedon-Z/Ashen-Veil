@@ -1,4 +1,4 @@
-python-telegram-bot==20.5
+python-telegram-bot==20.7
 #imghdr-py==1.0.0
 aiohttp
 requests
