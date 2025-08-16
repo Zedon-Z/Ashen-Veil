@@ -1,7 +1,9 @@
-python-telegram-bot==20.7
+python-telegram-bot==13.15
+urllib3<2
+requests==2.31.0
 #imghdr-py==1.0.0
 aiohttp
-requests
+#requests
 #openai
 #export BOT_TOKEN="YOUR_TELEGRAM_BOT_TOKEN"
 #optional NPC AI
